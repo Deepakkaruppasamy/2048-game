@@ -96,25 +96,28 @@ def draw_text(win, text, pos, font, color=(0, 0, 0)):
     text_surface = font.render(text, True, color)
     win.blit(text_surface, pos)
 
-def draw_input_box(win, text, rect, active):
+def draw_input_box(win, text, rect, active, show_cursor):
     color = (0, 0, 0) if active else (150, 150, 150)
     pygame.draw.rect(win, color, rect, 2)
-    draw_text(win, text, (rect.x + 5, rect.y + 5), FONT_SCORE, (0, 0, 0))
+    text_to_draw = text + ("|" if show_cursor and active else "")
+    draw_text(win, text_to_draw, (rect.x + 5, rect.y + 5), FONT_SCORE, (0, 0, 0))
+
 def login_signup_screen(win):
     username, password = "", ""
     mode = "LOGIN"
     running = True
     active_input = "username"
-    
+    cursor_visible = True
+    cursor_timer = pygame.time.get_ticks()
+
     try:
-        background_image = pygame.image.load("logo4.png")  
+        background_image = pygame.image.load("logo4.png")
         background_image = pygame.transform.scale(background_image, (win.get_width(), win.get_height()))
         print("Background image loaded successfully.")
     except pygame.error as e:
         print(f"Error loading image: {e}")
         return
 
-    
     game_title_pos = (win.get_width() // 2 - 100, 50)
     username_label_pos = (50, 150)
     username_rect = pygame.Rect(50, 180, 200, 30)
@@ -122,31 +125,29 @@ def login_signup_screen(win):
     password_rect = pygame.Rect(50, 250, 200, 30)
     submit_instruction_pos = (50, 320)
     message = ""
-    
+
     while running:
-        win.blit(background_image, (0, 0)) 
-        draw_text(win, "2048 Game", game_title_pos, FONT_MAIN, (0, 0, 0))  
-        
-        draw_text(win, f"{mode} - Enter your details below", (50, 110), FONT_SCORE, (0, 0, 0))  
-    
-        draw_text(win, "Username:", username_label_pos, FONT_SCORE, (0, 0, 0))  
-        draw_input_box(win, username, username_rect, active_input == "username")
-        
-        draw_text(win, "Password:", password_label_pos, FONT_SCORE, (0, 0, 0))  
-        draw_input_box(win, "*" * len(password), password_rect, active_input == "password")
-        
-        
-        draw_text(win, "Press Enter to Submit, Tab to Switch Mode", submit_instruction_pos, FONT_SCORE, (0, 0, 0)) 
-        draw_text(win, message, (50, 370), FONT_SCORE, (0, 0, 0))  
-        
-        
+        win.blit(background_image, (0, 0))
+        current_time = pygame.time.get_ticks()
+        if current_time - cursor_timer >= 500:  
+            cursor_visible = not cursor_visible
+            cursor_timer = current_time
+
+        draw_text(win, "2048 Game", game_title_pos, FONT_MAIN, (0, 0, 0))
+        draw_text(win, f"{mode} - Enter your details below", (50, 110), FONT_SCORE, (0, 0, 0))
+        draw_text(win, "Username:", username_label_pos, FONT_SCORE, (0, 0, 0))
+        draw_input_box(win, username, username_rect, active_input == "username", cursor_visible)
+        draw_text(win, "Password:", password_label_pos, FONT_SCORE, (0, 0, 0))
+        draw_input_box(win, "*" * len(password), password_rect, active_input == "password", cursor_visible)
+        draw_text(win, "Press Enter to Submit, Tab to Switch Mode", submit_instruction_pos, FONT_SCORE, (0, 0, 0))
+        draw_text(win, message, (50, 370), FONT_SCORE, (0, 0, 0))
+
         if mode == "SIGNUP":
             login_button_rect = pygame.Rect(50, 400, 100, 30)
             pygame.draw.rect(win, (0, 102, 204), login_button_rect)
-            draw_text(win, "Login", (login_button_rect.x + 5, login_button_rect.y + 5), FONT_SCORE, (255, 255, 255))  # Button text stays white
-        
+            draw_text(win, "Login", (login_button_rect.x + 5, login_button_rect.y + 5), FONT_SCORE, (255, 255, 255))
+
         pygame.display.flip()
-        
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -182,17 +183,7 @@ def login_signup_screen(win):
                         username += event.unicode
                     elif active_input == "password" and len(password) < 15:
                         password += event.unicode
-
-
 def game_info_screen(win):
-    try:
-        background_image = pygame.image.load("logo5.png")  
-        background_image = pygame.transform.scale(background_image, (win.get_width(), win.get_height()))
-        print("Background image loaded successfully.")
-    except pygame.error as e:
-        print(f"Error loading image: {e}")
-        return
-
     running = True
     while running:
         win.fill((240, 230, 200))  
