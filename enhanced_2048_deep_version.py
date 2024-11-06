@@ -3,11 +3,13 @@ import random
 import sys
 import sqlite3
 import bcrypt
+import time
+
 
 SIZE = 5
 TILE_SIZE = 100
 PADDING = 10
-WINDOW_WIDTH = SIZE * TILE_SIZE + 300
+WINDOW_WIDTH = SIZE * TILE_SIZE + 800
 WINDOW_HEIGHT = SIZE * TILE_SIZE + 150
 ANIMATION_SPEED = 150
 
@@ -31,7 +33,7 @@ TEXT_COLOR = {0: (119, 110, 101), 2: (119, 110, 101), 4: (119, 110, 101), 8: (25
 pygame.font.init()
 FONT_MAIN = pygame.font.Font(pygame.font.get_default_font(), 40)
 FONT_SCORE = pygame.font.Font(pygame.font.get_default_font(), 24)
-
+FONT_INPUT = pygame.font.Font(pygame.font.get_default_font(), 28)
 DB_NAME = 'high_scores.db'
 
 def create_table():
@@ -92,60 +94,38 @@ def add_new(mat):
         i, j = random.choice(empty_cells)
         mat[i][j] = random.choice([2, 4])
 
-def draw_text(win, text, pos, font, color=(0, 0, 0)):
+def draw_text(window, text, position, font, color):
     text_surface = font.render(text, True, color)
-    win.blit(text_surface, pos)
+    window.blit(text_surface, position)
 
-def draw_input_box(win, text, rect, active, show_cursor):
+
+def draw_input_box(win, text, rect, active):
     color = (0, 0, 0) if active else (150, 150, 150)
     pygame.draw.rect(win, color, rect, 2)
-    text_to_draw = text + ("|" if show_cursor and active else "")
-    draw_text(win, text_to_draw, (rect.x + 5, rect.y + 5), FONT_SCORE, (0, 0, 0))
+    draw_text(win, text, (rect.x + 5, rect.y + 5), FONT_SCORE, (0, 0, 0))
 
-def login_signup_screen(win):
-    username, password = "", ""
-    mode = "LOGIN"
+def main_menu_screen(win):
     running = True
-    active_input = "username"
-    cursor_visible = True
-    cursor_timer = pygame.time.get_ticks()
-
-    try:
-        background_image = pygame.image.load("logo4.png")
-        background_image = pygame.transform.scale(background_image, (win.get_width(), win.get_height()))
-        print("Background image loaded successfully.")
-    except pygame.error as e:
-        print(f"Error loading image: {e}")
-        return
-
-    game_title_pos = (win.get_width() // 2 - 100, 50)
-    username_label_pos = (50, 150)
-    username_rect = pygame.Rect(50, 180, 200, 30)
-    password_label_pos = (50, 220)
-    password_rect = pygame.Rect(50, 250, 200, 30)
-    submit_instruction_pos = (50, 320)
-    message = ""
+    selected_option = None
+    button_color = (100, 100, 250)
+    button_hover_color = (50, 50, 200)
 
     while running:
-        win.blit(background_image, (0, 0))
-        current_time = pygame.time.get_ticks()
-        if current_time - cursor_timer >= 500:  
-            cursor_visible = not cursor_visible
-            cursor_timer = current_time
+        win.fill((240, 230, 200))
+        draw_text(win, "2048 Deep Version", (win.get_width() // 2 - 120, 80), FONT_MAIN, (102, 51, 0))
 
-        draw_text(win, "2048 Game", game_title_pos, FONT_MAIN, (0, 0, 0))
-        draw_text(win, f"{mode} - Enter your details below", (50, 110), FONT_SCORE, (0, 0, 0))
-        draw_text(win, "Username:", username_label_pos, FONT_SCORE, (0, 0, 0))
-        draw_input_box(win, username, username_rect, active_input == "username", cursor_visible)
-        draw_text(win, "Password:", password_label_pos, FONT_SCORE, (0, 0, 0))
-        draw_input_box(win, "*" * len(password), password_rect, active_input == "password", cursor_visible)
-        draw_text(win, "Press Enter to Submit, Tab to Switch Mode", submit_instruction_pos, FONT_SCORE, (0, 0, 0))
-        draw_text(win, message, (50, 370), FONT_SCORE, (0, 0, 0))
+        # Buttons
+        buttons = [
+            {"label": "Start Game", "rect": pygame.Rect(win.get_width() // 2 - 100, 200, 200, 50)},
+            {"label": "About", "rect": pygame.Rect(win.get_width() // 2 - 100, 280, 200, 50)},
+            {"label": "Exit", "rect": pygame.Rect(win.get_width() // 2 - 100, 360, 200, 50)},
+        ]
 
-        if mode == "SIGNUP":
-            login_button_rect = pygame.Rect(50, 400, 100, 30)
-            pygame.draw.rect(win, (0, 102, 204), login_button_rect)
-            draw_text(win, "Login", (login_button_rect.x + 5, login_button_rect.y + 5), FONT_SCORE, (255, 255, 255))
+        # Draw Buttons
+        for button in buttons:
+            color = button_hover_color if button["rect"].collidepoint(pygame.mouse.get_pos()) else button_color
+            pygame.draw.rect(win, color, button["rect"], border_radius=8)
+            draw_text(win, button["label"], (button["rect"].x + 50, button["rect"].y + 10), FONT_SCORE, (255, 255, 255))
 
         pygame.display.flip()
 
@@ -154,35 +134,159 @@ def login_signup_screen(win):
                 pygame.quit()
                 sys.exit()
             elif event.type == pygame.MOUSEBUTTONDOWN:
+                if buttons[0]["rect"].collidepoint(event.pos):
+                    selected_option = "start"
+                    running = False
+                elif buttons[1]["rect"].collidepoint(event.pos):
+                    selected_option = "about"
+                    running = False
+                elif buttons[2]["rect"].collidepoint(event.pos):
+                    pygame.quit()
+                    sys.exit()
+
+    return selected_option
+
+def draw_text(win, text, pos, font, color=(0, 0, 0)):
+    text_surface = font.render(text, True, color)
+    win.blit(text_surface, pos)
+def display_error_message(win, message):
+    # Define the text color for error message
+    text_color = (255, 0, 0)  # Red color
+    
+    # Render the message text
+    error_text = FONT_MAIN.render(message, True, text_color)
+    
+    # Get the width and height of the text to center it
+    text_width = error_text.get_width()
+    text_height = error_text.get_height()
+    
+    # Calculate the position to center the text horizontally at the bottom
+    x_position = (win.get_width() - text_width) // 2
+    y_position = win.get_height() - text_height - 20  # 20px from the bottom
+    
+    # Draw the error message on the screen
+    win.blit(error_text, (x_position, y_position))
+
+
+
+
+FONT_LABEL = pygame.font.Font(None, 36)
+def login_signup_screen(win):
+    username = ''
+    password = ''
+    active_field = "username"
+    show_cursor = True
+    cursor_timer = time.time()
+    is_signup = False  # Flag to toggle between login and signup
+    message = ""
+    background_image = pygame.image.load('logo5.png')  # Load image file
+    image_rect = background_image.get_rect() 
+    running = True
+    while running:
+        win.fill((240, 230, 200))  # Background color
+        draw_text(win, "Login / Signup", (win.get_width() // 2 - 90, 50), FONT_MAIN, (102, 51, 0))
+
+        # Labels
+        draw_text(win, "Username:", (30, 150), FONT_SCORE, (0, 0, 0))
+        draw_text(win, "Password:", (20, 230), FONT_SCORE, (0, 0, 0))
+
+        # Assuming message contains the error message (e.g., "Code exists" or login/signup error message)
+        message_width = FONT_SCORE.size(message)[0]  # Get the width of the message
+
+# Calculate the x position to center the text horizontally
+        x_position = (win.get_width() - message_width) // 2
+        
+# Now, you can use this x_position to center the message
+
+        # Username Input Box
+        username_rect = pygame.Rect(win.get_width() // 2 - 100, 150, 200, 40)
+        pygame.draw.rect(win, (255, 255, 255), username_rect, border_radius=5)
+        pygame.draw.rect(win, (0, 0, 0), username_rect, 2, border_radius=5)
+
+        # Password Input Box
+        password_rect = pygame.Rect(win.get_width() // 2 - 100, 230, 200, 40)
+        pygame.draw.rect(win, (255, 255, 255), password_rect, border_radius=5)
+        pygame.draw.rect(win, (0, 0, 0), password_rect, 2, border_radius=5)
+
+        # Blinking cursor effect
+        if time.time() - cursor_timer > 0.5:
+            show_cursor = not show_cursor
+            cursor_timer = time.time()
+
+        # Display Username
+        username_display = username + ('|' if show_cursor and active_field == "username" else '')
+        draw_text(win, username_display, (username_rect.x + 10, username_rect.y + 5), FONT_INPUT, (0, 0, 0))
+
+        # Display Password (masked with asterisks)
+        password_display = '*' * len(password) + ('|' if show_cursor and active_field == "password" else '')
+        draw_text(win, password_display, (password_rect.x + 10, password_rect.y + 5), FONT_INPUT, (0, 0, 0))
+
+        # Buttons
+        login_signup_button = pygame.Rect(win.get_width() // 2 - 70, 310, 80, 40)
+        toggle_button = pygame.Rect(win.get_width() // 2 - 70, 370, 140, 40)
+
+        # Login/Signup button (based on is_signup flag)
+        button_label = "Sign" if not is_signup else "Login"
+        pygame.draw.rect(win, (100, 150, 250), login_signup_button, border_radius=8)
+        pygame.draw.rect(win, (50, 100, 200), toggle_button, border_radius=8)
+
+        draw_text(win, button_label, (login_signup_button.x + 12, login_signup_button.y + 5), FONT_SCORE, (255, 255, 255))
+        draw_text(win, "" + ("Signup" if is_signup else "Login"), (toggle_button.x + 10, toggle_button.y + 5), FONT_SCORE, (255, 255, 255))
+
+        pygame.display.flip()
+
+        # Event Handling
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                sys.exit()
+            elif event.type == pygame.MOUSEBUTTONDOWN:
+                # Switch active field based on click location
                 if username_rect.collidepoint(event.pos):
-                    active_input = "username"
+                    active_field = "username"
                 elif password_rect.collidepoint(event.pos):
-                    active_input = "password"
-                elif mode == "SIGNUP" and login_button_rect.collidepoint(event.pos):
-                    mode = "LOGIN"
-                    message = "Switched to LOGIN mode."
-                    username, password = "", ""
-            elif event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_BACKSPACE:
-                    if active_input == "username":
-                        username = username[:-1]
-                    elif active_input == "password":
-                        password = password[:-1]
-                elif event.key == pygame.K_TAB:
-                    mode = "SIGNUP" if mode == "LOGIN" else "LOGIN"
-                    message = f"Switched to {mode} mode"
-                elif event.key == pygame.K_RETURN:
-                    if mode == "LOGIN":
-                        success, message = login(username, password)
-                    else:
+                    active_field = "password"
+                elif login_signup_button.collidepoint(event.pos):
+                    # Call signup if we are on login form, or login if we are on signup form
+                    if not is_signup:  # Signup
                         success, message = signup(username, password)
-                    if success:
-                        return username
-                elif event.unicode.isprintable():
-                    if active_input == "username" and len(username) < 15:
+                        if success:
+                            return username  # Successful signup, return username
+                        else:
+                            draw_text(win, message, (x_position, win.get_height() - 50), FONT_SCORE, (255, 0, 0))
+
+
+                            pygame.display.flip()
+                            pygame.time.delay(2000)  # Show error for 2 seconds
+                    else:  # Login
+                        success, message = login(username, password)
+                        if success:
+                            return username  # Successful login
+                        else:
+                            draw_text(win, message, (x_position, win.get_height() - 50), FONT_SCORE, (255, 0, 0))
+
+                            pygame.display.flip()
+                            pygame.time.delay(2000)  # Show error for 2 seconds
+                elif toggle_button.collidepoint(event.pos):
+                    # Switch between login and signup
+                    is_signup = not is_signup
+                    username = ''
+                    password = ''  # Clear fields on switching
+
+            elif event.type == pygame.KEYDOWN:
+                if active_field == "username":
+                    if event.key == pygame.K_BACKSPACE:
+                        username = username[:-1]
+                    else:
                         username += event.unicode
-                    elif active_input == "password" and len(password) < 15:
+                elif active_field == "password":
+                    if event.key == pygame.K_BACKSPACE:
+                        password = password[:-1]
+                    else:
                         password += event.unicode
+
+
+
 def game_info_screen(win):
     running = True
     while running:
@@ -245,6 +349,8 @@ def swipe_down(mat):
         score += merges
     return score
 
+pygame.mixer.init()
+merge_sound = pygame.mixer.Sound("merge.wav")
 def merge_tiles(tiles):
     score = 0
     merged = []
@@ -257,6 +363,7 @@ def merge_tiles(tiles):
             merged.append(tiles[i] * 2)
             score += tiles[i] * 2
             skip = True
+            merge_sound.play()  # Play the merge sound when tiles merge
         else:
             merged.append(tiles[i])
     return merged, score
@@ -296,13 +403,31 @@ def main():
     win = pygame.display.set_mode((WINDOW_WIDTH, WINDOW_HEIGHT))
     pygame.display.set_caption("2048 Deep Version")
     create_table()
-    username = login_signup_screen(win)
-    high_score = get_high_score(username)
-    game_info_screen(win)
+    win = pygame.display.set_mode((800, 600))  # or whatever size you are using
+
+    # Show the main menu screen first
+    selected_option = main_menu_screen(win)
+    
+    if selected_option == "start":
+        # If "Start Game" is selected, proceed to login/signup screen
+        username = login_signup_screen(win)
+        high_score = get_high_score(username)
+        game_info_screen(win)
+    elif selected_option == "about":
+        # If "About" is selected, display information screen, then return to main menu
+        game_info_screen(win)
+        main()  # Restart main to show main menu again after "About"
+    else:
+        # Exit if chosen
+        pygame.quit()
+        sys.exit()
+
+    # Start the game after login/signup and game info screen
     score = 0
     mat = start_game()
     clock = pygame.time.Clock()
     game_over = False
+
     while True:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -332,7 +457,6 @@ def main():
                     game_over = False
         draw_grid(win, mat, score, high_score, game_over, username)
         clock.tick(ANIMATION_SPEED)
-
 
 if __name__ == "__main__":
     main()
